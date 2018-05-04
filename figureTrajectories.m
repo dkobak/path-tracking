@@ -32,8 +32,24 @@ for subject = 1:length(expData)
         [r, lags] = xcorr(midline, cursor, 100, 'coeff');
         [~, indx] = max(r);
         lag(subject, searchlight) = -lags(indx) * dt / 10;
+        
+        % and now without combining
+        trials = find(searchlightSeq == searchlight);
+        for t = 1:3
+            cursor =  expData{subject}{trials(t)}.cursorPosition;
+            midline = expData{subject}{trials(t)}.pathMidline;
+        
+            cursor = interp(cursor, 10);
+            midline = interp(midline, 10);
+        
+            [r, lags] = xcorr(midline, cursor, 100, 'coeff');
+            [~, indx] = max(r);
+            lag_trialwise(t, subject, searchlight) = -lags(indx) * dt / 10;
+        end
     end
 end
+
+save('lag.mat', 'lag', 'lag_trialwise')
 
 figure('Position', [100 100 1000 350]);
 subplot(121)
