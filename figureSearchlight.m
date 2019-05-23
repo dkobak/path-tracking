@@ -57,6 +57,7 @@ asymptote = squeeze(mean(mean(accuracy(:,:,8:10),3),1));
 slope = beta(:,1) * 100 / 30;
 horizonChangepoint = beta(:,3);
 horizonChangepoint = horizonChangepoint / 100 * 30;
+interceptChangepoint = beta(:,2);
 % 5 is an arbitrary number. It's like half-life, but only until 5-fold decrease
 % adding 10 because that's the shortest searchlight
 horizonExp = -1./expBeta(:,3) * log(5) + 10;
@@ -167,13 +168,24 @@ expert = horizonChangepoint(expertGroup);
 [p,~,stats] = ranksum(naive, expert);
 d = abs(mean(naive)-mean(expert))/std([naive-mean(naive); expert-mean(expert)]);
 disp(' ')
-display(['Expert horizon: ' num2str(mean(expert)) ' +- ' num2str(std(expert))])
-display(['Naive  horizon: ' num2str(mean(naive)) ' +- ' num2str(std(naive))])
+display(['Expert horizon: ' num2str(mean(expert)) ' +- ' num2str(std(expert)) '. Median: ' num2str(median(expert))])
+display(['Naive  horizon: ' num2str(mean(naive)) ' +- ' num2str(std(naive)) '. Median: ' num2str(median(naive))])
 display(['Ranksum p=' num2str(p) ', z=', num2str(abs(stats.zval))])
 display(['Cohen`s d=' num2str(d)])
 [r, pCorr] = corr(asymptote(:), horizonChangepoint, 'type', 'Spearman');
 display(['Spearman corr=' num2str(r) ', p=' num2str(pCorr)])
 text(30,20, ['R=' num2str(r,2) ' ***'])
+nrep=1000;
+rng(42);
+for rep=1:nrep
+    bootdiff(rep) = median(expert(randi(length(expert), length(expert), 1))) - median(naive(randi(length(naive), length(naive), 1))); 
+end
+display(['95% CI for the difference in medians: ' num2str(prctile(bootdiff, 2.5)) '--' num2str(prctile(bootdiff, 97.5))])
+
+% [r,pCorr]=corr([asymptote(naiveGroup) - mean(asymptote(naiveGroup)) asymptote(expertGroup) - mean(asymptote(expertGroup))]', [horizonChangepoint(naiveGroup) - mean(horizonChangepoint(naiveGroup)); horizonChangepoint(expertGroup) - mean(horizonChangepoint(expertGroup))], 'type', 'Spearman')
+% figure
+% scatter([asymptote(naiveGroup) - mean(asymptote(naiveGroup)) asymptote(expertGroup) - mean(asymptote(expertGroup))]', [horizonChangepoint(naiveGroup) - mean(horizonChangepoint(naiveGroup)); horizonChangepoint(expertGroup) - mean(horizonChangepoint(expertGroup))])
+
 
 % Using exponential fit
 subplot(235)
@@ -193,13 +205,21 @@ expert = horizonExp(expertGroup);
 [p,~,stats] = ranksum(naive, expert);
 d = abs(mean(naive)-mean(expert))/std([naive-mean(naive); expert-mean(expert)]);
 disp(' ')
-display(['Expert horizon exp: ' num2str(mean(expert)) ' +- ' num2str(std(expert))])
-display(['Naive  horizon exp: ' num2str(mean(naive)) ' +- ' num2str(std(naive))])
+display(['Expert horizon exp: ' num2str(mean(expert)) ' +- ' num2str(std(expert)) '. Median: ' num2str(median(expert))])
+display(['Naive  horizon exp: ' num2str(mean(naive)) ' +- ' num2str(std(naive)) '. Median: ' num2str(median(naive))])
 display(['Ranksum p=' num2str(p) ', z=', num2str(abs(stats.zval))])
 display(['Cohen`s d=' num2str(d)])
 [r, pCorr] = corr(asymptote(:), horizonExp, 'type', 'Spearman');
 display(['Spearman corr=' num2str(r) ', p=' num2str(pCorr)])
 text(30,20, ['R=' num2str(r,2) ' ***'])
+nrep=1000;
+rng(42);
+for rep=1:nrep
+    bootdiff(rep) = median(expert(randi(length(expert), length(expert), 1))) - median(naive(randi(length(naive), length(naive), 1))); 
+end
+display(['95% CI for the difference in medians: ' num2str(prctile(bootdiff, 2.5)) '--' num2str(prctile(bootdiff, 97.5))])
+
+% [r,pCorr]=corr([asymptote(naiveGroup) - mean(asymptote(naiveGroup)) asymptote(expertGroup) - mean(asymptote(expertGroup))]', [horizonExp(naiveGroup) - mean(horizonExp(naiveGroup)); horizonExp(expertGroup) - mean(horizonExp(expertGroup))], 'type', 'Spearman')
 
 % Slopes
 subplot(236)
@@ -213,17 +233,56 @@ xticks(20:20:100)
 xlabel('Time inside the path at the asymptote (%)')
 ylabel('Initial slope (%/cm)')
 
-% Compare naive and expert horizons
+% Compare naive and expert slopes
 naive  = slope(naiveGroup);
 expert = slope(expertGroup);
 [p,~,stats] = ranksum(naive, expert);
 d = abs(mean(naive)-mean(expert))/std([naive-mean(naive); expert-mean(expert)]);
 disp(' ')
-display(['Expert initial slope: ' num2str(mean(expert)) ' +- ' num2str(std(expert))])
-display(['Naive  initial slope: ' num2str(mean(naive)) ' +- ' num2str(std(naive))])
+display(['Expert initial slope: ' num2str(mean(expert)) ' +- ' num2str(std(expert)) '. Median: ' num2str(median(expert))])
+display(['Naive  initial slope: ' num2str(mean(naive)) ' +- ' num2str(std(naive)) '. Median: ' num2str(median(naive))])
 display(['Ranksum p=' num2str(p) ', z=', num2str(abs(stats.zval))])
 display(['Cohen`s d=' num2str(d)])
 [r, pCorr] = corr(asymptote(:), slope, 'type', 'Spearman');
 display(['Spearman corr=' num2str(r) ', p=' num2str(pCorr)])
 text(30,5, ['R=' num2str(r,2) ' ***'])
+nrep=1000;
+rng(42);
+for rep=1:nrep
+    bootdiff(rep) = median(expert(randi(length(expert), length(expert), 1))) - median(naive(randi(length(naive), length(naive), 1))); 
+end
+display(['95% CI for the difference in medians: ' num2str(prctile(bootdiff, 2.5)) '--' num2str(prctile(bootdiff, 97.5))])
+
+% Model prediction
+E1=median(slope(naiveGroup)) * median(horizonChangepoint(naiveGroup)) + median(interceptChangepoint(naiveGroup));
+E2=median(slope(expertGroup)) * median(horizonChangepoint(naiveGroup)) + median(interceptChangepoint(expertGroup));
+E3=median(slope(expertGroup)) * median(horizonChangepoint(expertGroup)) + median(interceptChangepoint(expertGroup));
+D = E3-E1;
+F1 = (E2-E1)/(E3-E1);
+F2 = (E3-E2)/(E3-E1);
+display(['Median model estimates: ' num2str(E1) ', ' num2str(E2) ', ' num2str(D) ', ' num2str(F1) ', ' num2str(F2)])
+
+E1=mean(slope(naiveGroup)) * mean(horizonChangepoint(naiveGroup)) + mean(interceptChangepoint(naiveGroup));
+E2=mean(slope(expertGroup)) * mean(horizonChangepoint(naiveGroup)) + mean(interceptChangepoint(expertGroup));
+E3=mean(slope(expertGroup)) * mean(horizonChangepoint(expertGroup)) + mean(interceptChangepoint(expertGroup));
+D = E3-E1;
+F1 = (E2-E1)/(E3-E1);
+F2 = (E3-E2)/(E3-E1);
+display(['Mean model estimates: ' num2str(E1) ', ' num2str(E2) ', ' num2str(D) ', ' num2str(F1) ', ' num2str(F2)])
+
+
+% % Relationship with lags
+% load 'lag.mat' % This file is made by figureTrajectories.m
+% asymptoteLag = mean(lag(:,8:10), 2);
+% 
+% % Excluding 10 naive subjects with large asymptoteLag
+% naive  = horizonChangepoint(naiveGroup & (asymptoteLag<10));
+% expert = horizonChangepoint(expertGroup);
+% [p,~,stats] = ranksum(naive, expert);
+% d = abs(mean(naive)-mean(expert))/std([naive-mean(naive); expert-mean(expert)]);
+% disp(' ')
+% display(['Expert horizon: ' num2str(mean(expert)) ' +- ' num2str(std(expert)) '. Median: ' num2str(median(expert))])
+% display(['Naive  horizon: ' num2str(mean(naive)) ' +- ' num2str(std(naive)) '. Median: ' num2str(median(naive))])
+% display(['Ranksum p=' num2str(p) ', z=', num2str(abs(stats.zval))])
+% display(['Cohen`s d=' num2str(d)])
 
