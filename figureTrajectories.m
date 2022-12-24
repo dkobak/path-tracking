@@ -33,6 +33,20 @@ for subject = 1:length(expData)
         [~, indx] = max(r);
         lag(subject, searchlight) = -lags(indx) * dt / 10;
         
+        %align trials to best lag and compute correlation
+        rm = abs(lags(indx));
+        if rm~=0
+            xx = cursor(rm:end);
+            yy = midline(1:end-rm+1);
+            rmse(subject, searchlight) = sqrt(mean((xx-yy).^2));
+%             lag_corr(subject, searchlight) = corr(xx,yy);
+        else
+            xx = cursor;
+            yy = midline;
+            rmse(subject, searchlight) = sqrt(mean((xx-yy).^2));
+%             lag_corr(subject, searchlight) = corr(xx,yy);
+        end
+        
         % and now without combining
         trials = find(searchlightSeq == searchlight);
         for t = 1:3
@@ -45,11 +59,43 @@ for subject = 1:length(expData)
             [r, lags] = xcorr(midline, cursor, 100, 'coeff');
             [~, indx] = max(r);
             lag_trialwise(t, subject, searchlight) = -lags(indx) * dt / 10;
+                        
         end
     end
 end
 
 save('lag.mat', 'lag', 'lag_trialwise')
+
+figure('Position', [100 100 1000 350]);
+subplot(121)
+hold on
+plot(cm, rmse(naiveGroup,:)', 'Color', naiveColor*.5 + [1 1 1]*.5)
+plot(cm, rmse(expertGroup,:)', 'Color', expertColor*.5 + [1 1 1]*.5)
+plot(cm, mean(rmse(naiveGroup,:)), '.-', 'Color', naiveColor, 'LineWidth', 3, 'MarkerSize', 30)
+plot(cm, mean(rmse(expertGroup,:)), '.-', 'Color', expertColor, 'LineWidth', 3, 'MarkerSize', 30)
+axis([0 30 min(rmse(:)) max(rmse(:))])
+xticks([0 6 12 18 24 30])
+xlabel('Searchlight length (cm)')
+ylabel('rmse')
+
+load accuracy.mat
+asymptote = squeeze(mean(mean(accuracy(:,:,8:10),1),3));
+asymptoteRmse = mean(rmse(:,8:10), 2);
+
+subplot(122)
+hold on
+scatter(asymptote(expertGroup)', asymptoteRmse(expertGroup)', 25, expertColor, 'filled')
+scatter(asymptote(naiveGroup), asymptoteRmse(naiveGroup), 25, naiveColor, 'filled')
+axis([20 100 min(rmse(:)) max(rmse(:))])
+[r,p] = corr(asymptote', asymptoteRmse, 'type', 'Spearman');
+text(40,2.4,['R=' num2str(r,2) ' ***'])
+disp(' ')
+display(['Spearman corr=' num2str(r) ', p=' num2str(p)])
+
+xlabel('Time inside the path at asymptote (%)')
+ylabel('Asymptote rmse') 
+
+%%%
 
 figure('Position', [100 100 1000 350]);
 subplot(121)
@@ -191,10 +237,23 @@ for searchlight = 1:10
         end
         chunksTraj = chunksTrajInterp;
         
+        for i = 1:size(chunksTraj,1)
+            [vala, valb] = min(chunksTraj(i,:));
+            out(i,:) = [vala valb/10/30*34.1];
+        end
+        testval(searchlight,subject) = std(out(:,1))+std(out(:,2));
+        clear vala valb out
+%         naive = testval(1,naiveGroup)';
+%         expert = testval(1,expertGroup)';
+%         [p,~,stat] = ranksum(naive,expert)
+%         d = abs(mean(naive)-mean(expert))/std([naive-mean(naive); expert-mean(expert)])
+        
         [~, ind] = min(mean(chunksTraj));
         bendPoints(subject,:) = [x(ind) mean(chunksTraj(:,ind))];
         bendPosStdAlt(searchlight,subject) = mad(chunksTraj(:, ind), 1);
         bendPosVerAlt(searchlight,subject) = mean(chunksTraj(:,ind));
+        
+        bendPointsAlt(subject,:,searchlight) = [x(ind) mean(chunksTraj(:,ind))];
         
         if naiveGroup(subject)
             plot(x, mean(chunksTraj), 'Color', [1 .5 .5])%, 'LineWidth', 2)
